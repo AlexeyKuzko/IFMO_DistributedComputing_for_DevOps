@@ -1,8 +1,0 @@
-database_name: wordpress_db
-database_user: wordpress_user
-database_password: wordpress_password
-wordpress_admin_user: admin
-wordpress_admin_password: admin_password
-wordpress_admin_email: admin@example.com
-wordpress_site_url: http://localhost:8000
-docker_network: wordpress_network

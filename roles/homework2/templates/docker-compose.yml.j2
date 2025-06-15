@@ -1,0 +1,71 @@
+version: '{{ docker_compose_version }}'
+
+services:
+  wordpress:
+    image: wordpress:latest
+    container_name: wordpress
+    ports:
+      - "{{ wordpress_port }}:80"
+    depends_on:
+      - mysql_primary
+      - mysql_secondary
+    environment:
+      WORDPRESS_DB_HOST: mysql_primary
+      WORDPRESS_DB_USER: {{ database_user }}
+      WORDPRESS_DB_PASSWORD: {{ database_password }}
+      WORDPRESS_DB_NAME: {{ database_name }}
+    networks:
+      - "{{ docker_network }}"
+    restart: unless-stopped
+
+      
+  mysql_primary:
+    image: mysql:8.0
+    container_name: mysql_primary
+    ports:
+      - "{{ mysql_port }}:3306"
+    environment:
+      MYSQL_ROOT_PASSWORD: {{ mysql_root_password }}
+      MYSQL_DATABASE: {{ database_name }}
+      MYSQL_USER: {{ database_user }}
+      MYSQL_PASSWORD: {{ database_password }}
+    volumes:
+      - mysql_primary_data:/var/lib/mysql
+      - ./primary_bootstrap.sql:/docker-entrypoint-initdb.d/primary_bootstrap.sql
+    networks:
+      - "{{ docker_network }}"
+    restart: unless-stopped
+    command: 
+      --log-bin=mysql-bin 
+      --server-id=1 
+      --binlog-do-db={{ database_name }}
+      --default-authentication-plugin=mysql_native_password
+  
+
+  mysql_secondary:
+    image: mysql:8.0
+    container_name: mysql_secondary
+    ports:
+      - "{{ mysql_secondary_port }}:3306"
+    environment:
+      MYSQL_ROOT_PASSWORD: {{ mysql_root_password }}
+      MYSQL_DATABASE: {{ database_name }}
+      MYSQL_USER: {{ database_user }}
+      MYSQL_PASSWORD: {{ database_password }}
+    volumes:
+      - mysql_secondary_data:/var/lib/mysql
+    networks:
+      - "{{ docker_network }}"
+    restart: unless-stopped
+    command: 
+      --server-id=2 
+      --relay-log=secondary-relay-bin 
+      --read-only=1
+
+volumes:
+  mysql_primary_data:
+  mysql_secondary_data:
+
+networks:
+  "{{ docker_network }}":
+    driver: bridge

@@ -1,9 +1,17 @@
+# Database configuration
 database_name: wordpress_db
 database_user: wordpress_user
 database_password: wordpress_password
-wordpress_admin_user: admin
-wordpress_admin_password: admin_password
-wordpress_admin_email: admin@example.com
-wordpress_site_url: http://localhost:8000
-docker_network: wordpress_network
+mysql_root_password: root_password
+mysql_port: 3306
+
+# Database cluster configuration
+mysql_secondary_port: 3307
+mysql_replication_password: repl_password
+
+# WordPress configuration
+wordpress_port: 8080
+
+# Docker configuration
+docker_network: wordpress-network
 docker_compose_version: '3.8'

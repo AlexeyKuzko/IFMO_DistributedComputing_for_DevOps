@@ -2,6 +2,5 @@
   hosts: webservers
   become: yes
   roles:
-    - docker
-    - db_cluster
-    - wordpress
+    - homework1
+    - homework2

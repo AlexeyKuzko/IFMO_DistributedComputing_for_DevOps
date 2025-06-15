@@ -1,2 +1,8 @@
 .DS_Store
 docker-compose.yml
+/.idea/.gitignore
+/.idea/IFMO_DistributedComputing_for_DevOps.iml
+/.idea/misc.xml
+/.idea/modules.xml
+/.idea/inspectionProfiles/profiles_settings.xml
+/.idea/vcs.xml

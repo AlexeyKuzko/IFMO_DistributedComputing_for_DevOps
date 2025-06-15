@@ -1,0 +1,44 @@
+version: '{{ docker_compose_version }}'
+
+services:
+  wordpress:
+    image: wordpress:latest
+    ports:
+      - "{{ wordpress_port }}:80"
+    depends_on:
+      - db
+    environment:
+      WORDPRESS_DB_HOST: db
+      WORDPRESS_DB_USER: "{{ database_user }}"
+      WORDPRESS_DB_PASSWORD: "{{ database_password }}"
+      WORDPRESS_DB_NAME: "{{ database_name }}"
+    volumes:
+      - wordpress_data:/var/www/html
+    networks:
+      - "{{ docker_network }}"
+    restart: unless-stopped
+
+  db:
+    image: mysql:8.0
+    ports:
+      - "{{ mysql_port }}:3306"
+    environment:
+      MYSQL_ROOT_PASSWORD: "{{ mysql_root_password }}"
+      MYSQL_DATABASE: "{{ database_name }}"
+      MYSQL_USER: "{{ database_user }}"
+      MYSQL_PASSWORD: "{{ database_password }}"
+    volumes:
+      - db_data:/var/lib/mysql
+      - ./mysql/conf.d:/etc/mysql/conf.d
+    networks:
+      - "{{ docker_network }}"
+    restart: unless-stopped
+    command: --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
+
+volumes:
+  wordpress_data:
+  db_data:
+
+networks:
+  "{{ docker_network }}":
+    driver: bridge

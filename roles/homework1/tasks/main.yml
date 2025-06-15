@@ -1,0 +1,83 @@
+- name: Install required packages
+  become: yes
+  block:
+    - name: Install system dependencies
+      apt:
+        name:
+          - apt-transport-https
+          - ca-certificates
+          - curl
+          - gnupg
+          - lsb-release
+          - libmysqlclient-dev
+          - python3-dev
+          - python3-pip
+        state: present
+        update_cache: yes
+
+    - name: Install MySQL client for Python
+      pip:
+        name:
+          - PyMySQL
+        executable: pip3
+      environment:
+        PIP_BREAK_SYSTEM_PACKAGES: "1"
+
+    - name: Add Docker GPG key
+      apt_key:
+        url: https://download.docker.com/linux/ubuntu/gpg
+        state: present
+
+    - name: Add Docker repository
+      apt_repository:
+        repo: deb [arch=amd64] https://download.docker.com/linux/ubuntu {{ ansible_distribution_release }} stable
+        state: present
+
+    - name: Install Docker
+      apt:
+        name:
+          - docker-ce
+          - docker-ce-cli
+          - containerd.io
+        state: present
+        update_cache: yes
+
+    - name: Wait for Docker to be fully initialized
+      wait_for:
+        timeout: 5
+
+    - name: Ensure Docker service is running
+      service:
+        name: docker
+        state: started
+        enabled: yes
+
+    - name: Install Docker Compose
+      get_url:
+        url: "https://github.com/docker/compose/releases/download/v2.24.5/docker-compose-{{ ansible_system | lower }}-{{ ansible_architecture }}"
+        dest: /usr/local/bin/docker-compose
+        mode: 'u+x'
+
+- name: Deploy WP and DB in single-node mode
+  become: yes
+  block:
+    - name: Create web application directory
+      file:
+        path: /opt/wordpress
+        state: directory
+        mode: '0755'
+
+    - name: Copy docker-compose.yml template
+      template:
+        src: docker-compose.yml.j2
+        dest: /opt/wordpress/docker-compose.yml
+        mode: '0644'
+
+    - name: Start db and wordpress containers via compose
+      community.docker.docker_compose_v2:
+        project_src: /opt/wordpress
+        state: present
+
+    - name: Wait for wp become fully operational
+      wait_for:
+        timeout: 10

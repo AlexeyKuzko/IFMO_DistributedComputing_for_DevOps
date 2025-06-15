@@ -1,29 +1,24 @@
 # Развертывание WordPress с помощью Docker и Ansible
-Этот проект предоставляет плейбук Ansible для развертывания приложения WordPress с использованием Docker, при этом база данных работает в кластере MySQL с синхронизацией данных.
+Этот проект представляет Ansible‑плейбук для пошагового развертывания приложения WordPress с помощью Docker Compose: сначала запускается однобазовая конфигурация, выполняется резервное копирование MySQL, а затем происходит перезапуск в режиме кластера MySQL с включённой группвой репликацией данных.
 
 ## Структура проекта
 ```
 IFMO_DistributedComputing_for_DevOps
 ├── group_vars
 │   └── all.yml
-├── host_vars
-│   └── wordpress.yml
 ├── roles
-│   ├── docker
+│   ├── homework1
 │   │   ├── tasks
 │   │   │   └── main.yml
 │   │   └── templates
 │   │       └── docker-compose.yml.j2
-│   ├── wordpress
+│   ├── homework2
+│   │   ├── files
+│   │   │   └── primary_bootstrap.sql
 │   │   ├── tasks
 │   │   │   └── main.yml
 │   │   └── templates
-│   │       └── wp-config.php.j2
-│   └── db_cluster
-│       ├── tasks
-│       │   └── main.yml
-│       └── templates
-│           └── my.cnf
+│   │       └── docker-compose.yml.j2
 ├── inventory
 │   └── hosts.ini
 ├── playbook.yml
@@ -80,9 +75,18 @@ IFMO_DistributedComputing_for_DevOps
 Для проверки состояния кластера MySQL вы можете выполнить следующие команды на удаленном сервере:
 
 ```bash
-# Подключение к первичному узлу
-docker exec -it mysql_primary mysql -uroot -proot_password
+# Подключение ко вторичному узлу
+docker exec -it mysql_secondary mysql -uroot -proot_password
 
 # Внутри MySQL выполните:
-SELECT * FROM performance_schema.replication_group_members;
+SHOW REPLICA STATUS;
+```
+## Завершение работы
+Для остановки веб-приложения, выполните:
+```bash
+sudo docker rm -f $(sudo docker ps -aq) ; sudo docker system prune -a ; sudo docker volume prune
+```
+Для очистки вольюмов контейнеров, выполните:
+```bash
+sudo docker volume rm wordpress_db_data wordpress_wordpress_data wordpress_mysql_primary_data wordpress_mysql_secondary_data
 ```
