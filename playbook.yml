@@ -1,6 +1,7 @@
 - name: Deploy WordPress with Docker
   hosts: webservers
-  become: yes
+  become: true
   roles:
     - homework1
     - homework2
+    - homework3

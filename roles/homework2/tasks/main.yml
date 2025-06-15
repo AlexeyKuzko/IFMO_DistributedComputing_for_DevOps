@@ -1,10 +1,10 @@
 ---
 - name: Migrate from homework1 to homework2
-  become: yes
+  become: true
   block:
     - name: Execute mysqldump in container
       community.docker.docker_container_exec:
-        container: wordpress-db-1
+        container: my_app-db-1
         command: >
           mysqldump -h127.0.0.1 -uroot -p{{ mysql_root_password }}
           --all-databases --source-data=2
@@ -17,36 +17,36 @@
       ansible.builtin.copy:
         dest: /tmp/dmp.sql
         content: "{{ dump.stdout }}"
-        mode: 0644
+        mode: "0644"
 
-    - name: Gracefull shutdown containers
-      command: docker-compose down
-      args:
-        chdir: /opt/wordpress
+    - name: Gracefully shutdown containers
+      community.docker.docker_compose_v2:
+        project_src: "{{ project_src }}"
+        state: absent
 
 - name: Deploy WP and DB in db-cluster mode
-  become: yes
+  become: true
   block:
     - name: Copy docker-compose.yml template for homework2
-      template:
+      ansible.builtin.template:
         src: docker-compose.yml.j2
-        dest: /opt/wordpress/docker-compose.yml
+        dest: "{{ project_src }}docker-compose.yml"
         mode: '0644'
 
     - name: Copy query to bootstrap primary node at startup
-      copy:
+      ansible.builtin.copy:
         src: primary_bootstrap.sql
-        dest: /opt/wordpress/primary_bootstrap.sql
+        dest: "{{ project_src }}primary_bootstrap.sql"
         mode: '0644'
-  
+
     - name: Start db and wordpress containers via compose
-      command: docker-compose up -d
-      args:
-        chdir: /opt/wordpress/
+      community.docker.docker_compose_v2:
+        project_src: "{{ project_src }}"
+        state: present
       tags: play
 
 - name: Migrate dumped data from homework1
-  become: yes
+  become: true
   block:
     - name: Copy SQL dump into container
       community.docker.docker_container_copy_into:
@@ -73,13 +73,13 @@
       register: primary_query
 
     - name: Debug master_query
-      debug:
+      ansible.builtin.debug:
         var: primary_query
 
     - name: Set replication params
-      set_fact:
+      ansible.builtin.set_fact:
         primary_log_file: "{{ primary_query.query_result[0][0].File }}"
-        primary_log_pos:  "{{ primary_query.query_result[0][0].Position }}"
+        primary_log_pos: "{{ primary_query.query_result[0][0].Position }}"
 
     - name: Configure replication on secondary server
       community.docker.docker_container_exec:
@@ -101,5 +101,5 @@
       register: secondary_status
 
     - name: Display replication status
-      debug:
+      ansible.builtin.debug:
         msg: "{{ secondary_status.stdout_lines }}"

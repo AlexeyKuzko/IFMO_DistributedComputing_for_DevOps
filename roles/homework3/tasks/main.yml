@@ -1,0 +1,88 @@
+- name: Prepare Grafana files
+  become: true
+  block:
+    - name: Create dirs for grafana config files
+      ansible.builtin.file:
+        path: "{{ project_src }}{{ item }}"
+        state: directory
+        mode: '0755'
+      loop:
+        - "{{ dashboards_path }}/"
+        - "{{ provisioning_datasources }}/"
+        - "{{ provisioning_dashboards }}/"
+
+    - name: Copy grafana dashboard json file
+      ansible.builtin.copy:
+        src: dashboard.json
+        dest: "{{ project_src }}{{ dashboards_path }}/dashboard.json"
+        mode: '0644'
+
+    - name: Copy grafana datasources yaml template
+      ansible.builtin.template:
+        src: grafana-datasources.yml.j2
+        dest: "{{ project_src }}{{ provisioning_datasources }}/datasources.yaml"
+        mode: '0644'
+
+    - name: Copy grafana dashboard yaml template
+      ansible.builtin.template:
+        src: grafana-dashboard.yml.j2
+        dest: "{{ project_src }}{{ provisioning_dashboards }}/dashboards.yaml"
+        mode: '0644'
+
+- name: Prepare Prometheus files
+  become: true
+  block:
+    - name: Create a dir for prometheus
+      ansible.builtin.file:
+        path: "{{ project_src }}prometheus"
+        state: directory
+        mode: '0755'
+
+    - name: Copy prometheus yaml template
+      ansible.builtin.template:
+        src: prometheus.yml.j2
+        dest: "{{ project_src }}prometheus/prometheus.yml"
+        mode: '0644'
+
+- name: Prepare MySQL Exporter config
+  become: true
+  block:
+    - name: Deploy my.cnf
+      ansible.builtin.template:
+        src: files/my.cnf.j2
+        dest: "{{ project_src }}my.cnf"
+        mode: '0644'
+
+- name: Start monitoring
+  become: true
+  block:
+    - name: Copy compose-grafana-prometheus yaml template
+      ansible.builtin.template:
+        src: compose-monitoring.yml.j2
+        dest: "{{ project_src }}compose-monitoring.yml"
+        mode: '0644'
+
+    - name: Start web app with monitoring containers via compose
+      community.docker.docker_compose_v2:
+        files:
+          - docker-compose.yml
+          - compose-monitoring.yml
+        project_src: "{{ project_src }}"
+        wait: true
+
+    - name: Check if Grafana is up
+      ansible.builtin.wait_for:
+        host: "{{ ansible_host }}"
+        port: "{{ grafana_port }}"
+        delay: 5
+        timeout: 60
+        state: started
+
+    - name: Wait for Grafana to be fully operational
+      ansible.builtin.uri:
+        url: "http://{{ ansible_host }}:{{ grafana_port }}/api/health"
+        status_code: 200
+      register: grafana_status
+      until: grafana_status.status == 200
+      retries: 6
+      delay: 5

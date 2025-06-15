@@ -1,8 +1,8 @@
 - name: Install required packages
-  become: yes
+  become: true
   block:
     - name: Install system dependencies
-      apt:
+      ansible.builtin.apt:
         name:
           - apt-transport-https
           - ca-certificates
@@ -13,10 +13,10 @@
           - python3-dev
           - python3-pip
         state: present
-        update_cache: yes
+        update_cache: true
 
     - name: Install MySQL client for Python
-      pip:
+      ansible.builtin.pip:
         name:
           - PyMySQL
         executable: pip3
@@ -24,60 +24,60 @@
         PIP_BREAK_SYSTEM_PACKAGES: "1"
 
     - name: Add Docker GPG key
-      apt_key:
+      ansible.builtin.apt_key:
         url: https://download.docker.com/linux/ubuntu/gpg
         state: present
 
     - name: Add Docker repository
-      apt_repository:
+      ansible.builtin.apt_repository:
         repo: deb [arch=amd64] https://download.docker.com/linux/ubuntu {{ ansible_distribution_release }} stable
         state: present
 
     - name: Install Docker
-      apt:
+      ansible.builtin.apt:
         name:
           - docker-ce
           - docker-ce-cli
           - containerd.io
         state: present
-        update_cache: yes
+        update_cache: true
 
     - name: Wait for Docker to be fully initialized
-      wait_for:
+      ansible.builtin.wait_for:
         timeout: 5
 
     - name: Ensure Docker service is running
-      service:
+      ansible.builtin.service:
         name: docker
         state: started
-        enabled: yes
+        enabled: true
 
     - name: Install Docker Compose
-      get_url:
+      ansible.builtin.get_url:
         url: "https://github.com/docker/compose/releases/download/v2.24.5/docker-compose-{{ ansible_system | lower }}-{{ ansible_architecture }}"
         dest: /usr/local/bin/docker-compose
         mode: 'u+x'
 
 - name: Deploy WP and DB in single-node mode
-  become: yes
+  become: true
   block:
     - name: Create web application directory
-      file:
-        path: /opt/wordpress
+      ansible.builtin.file:
+        path: "{{ project_src }}"
         state: directory
         mode: '0755'
 
-    - name: Copy docker-compose.yml template
-      template:
+    - name: Copy docker-compose yaml template
+      ansible.builtin.template:
         src: docker-compose.yml.j2
-        dest: /opt/wordpress/docker-compose.yml
+        dest: "{{ project_src }}docker-compose.yml"
         mode: '0644'
 
     - name: Start db and wordpress containers via compose
       community.docker.docker_compose_v2:
-        project_src: /opt/wordpress
-        state: present
+        project_src: "{{ project_src }}"
+        wait: true
 
-    - name: Wait for wp become fully operational
-      wait_for:
+    - name: Wait for app become fully operational
+      ansible.builtin.wait_for:
         timeout: 10

@@ -1,0 +1,44 @@
+version: '{{ docker_compose_version }}'
+
+services:
+
+  mysqld-exporter:
+    image: prom/mysqld-exporter
+    container_name: mysqld-exporter
+    volumes:
+      - "{{ project_src }}my.cnf:/root/.my.cnf"
+    networks:
+      - "{{ docker_network }}"
+    ports:
+      - "9104:9104"
+    depends_on:
+      - mysql_primary
+    command:
+     - "--mysqld.username=root:{{ mysql_root_password }}"
+     - "--mysqld.address=mysql_primary:{{ mysql_port }}"
+    restart: unless-stopped
+
+  prometheus:
+    image: prom/prometheus
+    ports:
+      - "{{ prometheus_port }}:9090"
+    volumes:
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+    networks:
+      - "{{ docker_network }}"
+    restart: unless-stopped
+
+  grafana:
+    image: grafana/grafana
+    ports:
+      - "{{ grafana_port }}:3000"
+    environment:
+      GF_SECURITY_ADMIN_USER: {{ grafana_admin }}
+      GF_SECURITY_ADMIN_PASSWORD: {{ grafana_pass }}
+    volumes:
+      - "./{{ dashboards_path }}:/var/lib/{{ dashboards_path }}"
+      - "./{{ provisioning_datasources }}:/etc/{{ provisioning_datasources }}"
+      - "./{{ provisioning_dashboards }}:/etc/{{ provisioning_dashboards }}"
+    networks:
+      - "{{ docker_network }}"
+    restart: unless-stopped
